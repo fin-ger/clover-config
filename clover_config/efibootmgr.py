@@ -17,6 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import subprocess
+import re
 import os.path
 
 from clover_config.log import Log
@@ -24,7 +25,13 @@ from clover_config.exit_code import ExitCode
 from clover_config.lsblk import LsBlk
 
 def efibootmgr (*parameters, die_on_failure = True):
-    process = subprocess.Popen (["efibootmgr"].extend (parameters), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    try:
+        process = subprocess.Popen (["efibootmgr"] + list (parameters),
+                                    stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+    except FileNotFoundError:
+        Log.die (ExitCode.NOT_ROOT, "Executable 'efibootmgr' not found in PATH! Try running this program "
+                 "as root or install the package containing this executable with your distributions package manager")
+
     out, err = process.communicate ()
 
     if len (err) > 0:
