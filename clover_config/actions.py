@@ -44,18 +44,24 @@ def remove ():
     EFIBootManager.try_remove_boot_entry (EFI_ENTRY_LABEL)
 
 def status ():
-    pass
+    bootnum = EFIBootManager.get_bootnum (EFI_ENTRY_LABEL)
+    boot_order = EFIBootManager.get_boot_order ().split (",")
+    active = "active" if EFIBootManager.is_active (EFI_ENTRY_LABEL) else "inactive"
+    if bootnum is None:
+        Log.root.info ("Clover is currently NOT installed in your EFI")
+    else:
+        Log.root.info ("Clover is currently installed at boot position %s and is %s.", boot_order.index (bootnum), active)
 
 def update ():
     pass
 
-def efi_check ():
-    EFIBootManager.efi_check ()
+def check_efi ():
+    EFIBootManager.check_efi ()
 
 Actions = {
     "status": status,
     "install": install,
     "remove": remove,
     "update": update,
-    "efi-check": efi_check
+    "check-efi": check_efi
 }

@@ -47,13 +47,12 @@ class LogManager:
                 'DEBUG':    'bold_cyan',
                 'INFO':     'bold_blue',
                 'WARNING':  'bold_yellow',
-                'ERROR':    'bold_red',
-                'CRITICAL': 'bold_purple',
+                'ERROR':    'bold_red'
             }
         )
 
         if HAS_SYSTEMD:
-            self._log_handler = JournalHandler (SYSLOG_IDENTIFIER="clover-config")
+            self._log_handler = JournalHandler (SYSLOG_IDENTIFIER = "clover-config")
             self._log_handler.setFormatter (self._syslog_formatter)
         else:
             log_path = os.path.join (os.path.expanduser ("~"), ".local", "share", "clover-config")
@@ -80,15 +79,16 @@ class LogManager:
         self.root.addHandler (self._console_handler)
 
         if HAS_SYSTEMD:
-            self.root.info ("Using journald logging system...")
+            self.root.debug ("Using journald logging system...")
         else:
-            self.root.info ("Logging to `{}`".format (log_file))
+            self.root.debug ("Logging to `{}`".format (log_file))
 
     def __getattr__ (self, name):
         return logging.getLogger (name)
 
     def die (self, code, message = "An error occured during the execution of the current action"):
-        self.root.critical ("%s - aborting...", message)
+        self.root.error ("%s - aborting...", message)
+        self.root.debug ("Exiting with exit code %d", code)
         sys.exit (code.value)
 
     def set_log_level (self, log_level):
@@ -96,8 +96,7 @@ class LogManager:
             "debug": logging.DEBUG,
             "info": logging.INFO,
             "warning": logging.WARNING,
-            "error": logging.ERROR,
-            "critical": logging.CRITICAL
+            "error": logging.ERROR
         }
         level = log_levels[log_level]
         self._console_handler.setLevel (level)

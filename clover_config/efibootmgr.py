@@ -25,6 +25,7 @@ from clover_config.exit_code import ExitCode
 from clover_config.lsblk import LsBlk
 
 def efibootmgr (*parameters, die_on_failure = True):
+    Log.efibootmgr.debug ("Calling subprocess: efibootmgr %s", " ".join (parameters))
     try:
         process = subprocess.Popen (["efibootmgr"] + list (parameters),
                                     stdout = subprocess.PIPE, stderr = subprocess.PIPE)
@@ -33,6 +34,8 @@ def efibootmgr (*parameters, die_on_failure = True):
                  "as root or install the package containing this executable with your distributions package manager")
 
     out, err = process.communicate ()
+
+    Log.efibootmgr.debug ("Subprocess efibootmgr exited with exit code %d", process.returncode)
 
     if len (err) > 0:
         Log.efibootmgr.error (err.decode ())
@@ -68,15 +71,26 @@ class EFIBootManager:
         EFIBootManager.Disk = LsBlk.get_disk_from_device (EFIBootManager.Device)
         EFIBootManager.Partition = LsBlk.get_partition_from_device (EFIBootManager.Device)
         EFIBootManager.Mountpoint = LsBlk.get_mountpoint_from_device (EFIBootManager.Device)
-        Log.efibootmgr.info ("Using %s for clover install.", EFIBootManager.Mountpoint)
+        Log.efibootmgr.info ("Using %s as EFI partition mountpoint.", EFIBootManager.Mountpoint)
         EFIBootManager._initialized = True
 
     @staticmethod
     def get_bootnum (entry):
         EFIBootManager._initialize ()
-        regex = r"(\w{4}).\s+" + re.escape (entry) + r"$"
-        m = re.search (regex, efibootmgr ())
-        return m.group (1) if m is not None else None
+        regex = r"^Boot(\w{4}).?\s+" + re.escape (entry) + r"$"
+        m = re.search (regex, efibootmgr (), re.MULTILINE)
+        res = m.group (1) if m is not None else None
+        Log.efibootmgr.debug ("Boot entry position of '%s' is %s", entry, res)
+        return res
+
+    @staticmethod
+    def is_active (entry):
+        EFIBootManager._initialize ()
+        regex = r"^Boot\w{4}\*\s+" + re.escape (entry) + r"$"
+        m = re.search (regex, efibootmgr (), re.MULTILINE)
+        res = True if m is not None else None
+        Log.efibootmgr.debug ("Boot entry '%s' is %s", entry, "active" if res else "inactive")
+        return res
 
     @staticmethod
     def try_remove_boot_entry (entry):
@@ -92,12 +106,15 @@ class EFIBootManager:
         EFIBootManager._initialize ()
         regex = r"BootOrder: (.+)"
         m = re.search (regex, efibootmgr ())
-        return m.group (1) if m is not None else ""
+        res = m.group (1) if m is not None else ""
+        Log.efibootmgr.debug ("Current EFI boot order is: %s", res)
+        return res
 
     @staticmethod
     def set_boot_order (boot_order):
         EFIBootManager._initialize ()
         Log.efibootmgr.info ("Writing new boot order...")
+        Log.efibootmgr.debug ("New EFI boot order is: %s", boot_order)
         efibootmgr ("-o", boot_order)
 
     @staticmethod
@@ -109,15 +126,14 @@ class EFIBootManager:
     @staticmethod
     def check_efi ():
         Log.efibootmgr.info ("Checking if system is booted in EFI mode...")
+        Log.efibootmgr.debug ("Checking if '/sys/firmware/efi' exists...")
 
-        if os.path.isdir ("/sys/firmware/efi"):
-            Log.efibootmgr.info ("EFI found!")
-        else:
+        if not os.path.isdir ("/sys/firmware/efi"):
             Log.efibootmgr.error ("This system is not booted in EFI mode!")
-            Log.efibootmgr.error ()
+            Log.efibootmgr.error ("")
             Log.efibootmgr.error ("Note: This program currently has no support for BIOS booted systems.")
             Log.efibootmgr.error ("      To install clover on a BIOS system either install it manually or submit")
             Log.efibootmgr.error ("      a pull request on github adding BIOS support to this program.")
-            Log.efibootmgr.error ()
+            Log.efibootmgr.error ("")
             Log.efibootmgr.error ("GitHub: https://github.com/fin-ger/clover-config")
             Log.die (ExitCode.NOT_IN_EFI_MODE, "System is NOT booted in EFI mode!")

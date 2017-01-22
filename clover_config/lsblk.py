@@ -23,6 +23,7 @@ from clover_config.log import Log
 from clover_config.exit_code import ExitCode
 
 def lsblk (*parameters):
+    Log.lsblk.debug ("Calling subprocess: lsblk %s", " ".join (parameters))
     try:
         process = subprocess.Popen (["lsblk"] + list (parameters), stdout = subprocess.PIPE, stderr = subprocess.PIPE)
     except FileNotFoundError:
@@ -30,8 +31,10 @@ def lsblk (*parameters):
                  "as root or install the package containing this executable with your distributions package manager")
     out, err = process.communicate ()
 
+    Log.lsblk.debug ("Subprocess lsblk exited with exit code %d", process.returncode)
+
     if len (err) > 0:
-        Log.efibootmgr.error (err.decode ())
+        Log.lsblk.error (err.decode ())
 
     return out.decode ()
 
@@ -41,22 +44,30 @@ class LsBlk:
         out = lsblk ("-lpno", "MOUNTPOINT,FSTYPE,PARTTYPE,NAME")
         regex = r"^\/.+\s+vfat\s+c12a7328-f81f-11d2-ba4b-00a0c93ec93b\s+(.+)"
         m = re.search (regex, out, re.MULTILINE)
-        return m.group (1) if m is not None else None
+        res = m.group (1) if m is not None else None
+        Log.lsblk.debug ("EFI device is '%s'", res)
+        return res
 
     @staticmethod
     def get_disk_from_device (device):
         out = lsblk ("-lpno", "TYPE,NAME")
         regex = r"disk\s+(.+?)\npart\s+" + re.escape (device)
         m = re.search (regex, out)
-        return m.group (1) if m is not None else None
+        res = m.group (1) if m is not None else None
+        Log.lsblk.debug ("EFI disk is '%s'", res)
+        return res
 
     @staticmethod
     def get_partition_from_device (device):
         out = lsblk ("-no", "MAJ:MIN", device)
         regex = r"\d+:(\d+)"
         m = re.search (regex, out)
-        return m.group (1) if m is not None else None
+        res = m.group (1) if m is not None else None
+        Log.lsblk.debug ("EFI partition number on disk is %s", res)
+        return res
 
     @staticmethod
     def get_mountpoint_from_device (device):
-        return lsblk ("-no", "MOUNTPOINT", device)[:-1]
+        res = lsblk ("-no", "MOUNTPOINT", device)[:-1]
+        Log.lsblk.debug ("EFI device mountpoint is '%s'", res)
+        return res

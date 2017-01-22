@@ -29,6 +29,8 @@ available actions:
   remove                remove the clover EFI boot entry.
   update                update the boot entries of clover with the
                         configuration given in /etc/clover/menu.conf.
+  efi-check             check if the current system is booted in efi
+                        mode.
 """
 
 loglevel_help = """set the minimum loglevel a message should have to
@@ -44,11 +46,11 @@ def main ():
         formatter_class = RawTextHelpFormatter
     )
     parser.add_argument (
-        "action", metavar = "ACTION", choices = ["status", "install", "remove", "update", "efi-check"],
+        "action", metavar = "ACTION", choices = ["status", "install", "remove", "update", "check-efi"],
         help = "the action that should be applied on the clover config."
     )
     parser.add_argument (
-        "-l", "--loglevel", default = "info", choices = ["debug", "info", "warning", "error", "critical"],
+        "-l", "--loglevel", default = "info", choices = ["debug", "info", "warning", "error"],
         help = loglevel_help
     )
     parser.add_argument (
